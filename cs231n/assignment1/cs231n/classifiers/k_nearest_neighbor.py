@@ -1,6 +1,6 @@
 from builtins import range
 from builtins import object
-from HW4openclass.cs231n.assignment1.knn import X_train
+# from HW4openclass.cs231n.assignment1.knn import X_train
 import numpy as np
 from past.builtins import xrange
 
@@ -105,7 +105,12 @@ class KNearestNeighbor(object):
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
-        dists=X-self.X_train
+        X_squre=np.sum(X**2,axis=1).reshape(num_test,1)
+        X_time=np.ones((1,num_train))
+        X_train_time=np.ones((1,num_test))
+        X_train_squre=np.sum(self.X_train**2,axis=1).reshape(num_train ,1)
+        cross=X @ self.X_train.T
+        dists=np.sqrt(np.maximum(X_squre @ X_time + X_train_time.T @ X_train_squre.T -cross *2,0.0))
         #########################################################################
         #                                                                #
         # Compute the l2 distance between all test points and all training      #
@@ -141,6 +146,9 @@ class KNearestNeighbor(object):
             # A list of length k storing the labels of the k nearest neighbors to
             # the ith test point.
             closest_y = []
+            sort_list=np.argsort(dists[i])[:k]
+            closest_y=self.y_train[sort_list]
+
             #########################################################################
             # TODO:                                                                 #
             # Use the distance matrix to find the k nearest neighbors of the ith    #
@@ -149,7 +157,7 @@ class KNearestNeighbor(object):
             # Hint: Look up the function numpy.argsort.                             #
             #########################################################################
 
-
+            y_pred[i]=np.argmax(np.bincount(closest_y))
             #########################################################################
             # TODO:                                                                 #
             # Now that you have found the labels of the k nearest neighbors, you    #

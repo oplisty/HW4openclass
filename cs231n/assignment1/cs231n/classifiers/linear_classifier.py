@@ -26,9 +26,9 @@ class LinearClassifier(object):
         Train this linear classifier using stochastic gradient descent.
 
         Inputs:
-        - X: A numpy array of shape (N, D) containing training data; there are N
+        - X: A numpy array of shape (num_train, dim) containing training data; there are N
           training samples each of dimension D.
-        - y: A numpy array of shape (N,) containing training labels; y[i] = c
+        - y: A numpy array of shape (num_train,) containing training labels; y[i] = c
           means that X[i] has label 0 <= c < C for C classes.
         - learning_rate: (float) learning rate for optimization.
         - reg: (float) regularization strength.
@@ -39,19 +39,20 @@ class LinearClassifier(object):
         Outputs:
         A list containing the value of the loss function at each training iteration.
         """
-        num_train, dim = X.shape
+        num_train, dim = X.shape #numtrain,dim
         num_classes = (
             np.max(y) + 1
         )  # assume y takes values 0...K-1 where K is number of classes
         if self.W is None:
             # lazily initialize W
-            self.W = 0.001 * np.random.randn(dim, num_classes)
+            self.W = 0.001 * np.random.randn(dim, num_classes) #dim ,numclasses
 
         # Run stochastic gradient descent to optimize W
         loss_history = []
         for it in range(num_iters):
-            X_batch = None
-            y_batch = None
+            index = np.random.choice(np.arange(num_train),batch_size)
+            X_batch=X[index]
+            y_batch = y[index]
 
             #########################################################################
             # TODO:                                                                 #
@@ -72,7 +73,8 @@ class LinearClassifier(object):
 
             # perform parameter update
             #########################################################################
-            # TODO:                                                                 #
+            # TODO:
+            self.W-= learning_rate * grad                                                                #
             # Update the weights using the gradient and the learning rate.          #
             #########################################################################
 
@@ -88,7 +90,7 @@ class LinearClassifier(object):
         data points.
 
         Inputs:
-        - X: A numpy array of shape (N, D) containing training data; there are N
+        - X: A numpy array of shape (num_train, dim) containing training data; there are N
           training samples each of dimension D.
 
         Returns:
@@ -97,6 +99,9 @@ class LinearClassifier(object):
           class.
         """
         y_pred = np.zeros(X.shape[0])
+        scores=X.dot(self.W) #numtrain,numclass
+        y_pred=np.argmax(scores, axis=1)
+      
         ###########################################################################
         # TODO:                                                                   #
         # Implement this method. Store the predicted labels in y_pred.            #

@@ -37,7 +37,7 @@ def eval_numerical_gradient(f, x, verbose=True, h=0.00001):
     return grad
 
 
-def eval_numerical_gradient_array(f, x, df, h=1e-5):
+def neval_numerical_gradient_array(f, x, df, h=1e-5):
     """
     Evaluate a numeric gradient for a function that accepts a numpy
     array and returns a numpy array.

@@ -22,15 +22,9 @@ def affine_forward(x, w, b):
     - out: output, of shape (N, M)
     - cache: (x, w, b)
     """
-    out = None
-    ###########################################################################
-    # TODO: Implement the affine forward pass. Store the result in out. You   #
-    # will need to reshape the input into rows.                               #
-    ###########################################################################
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    N=x.shape[0]
+    train_x=x.reshape(N,-1)
+    out = train_x @ w +b 
     cache = (x, w, b)
     return out, cache
 
@@ -52,7 +46,12 @@ def affine_backward(dout, cache):
     - db: Gradient with respect to b, of shape (M,)
     """
     x, w, b = cache
-    dx, dw, db = None, None, None
+    N=x.shape[0]
+    x_train=x.reshape(N,-1)
+    dx=dout @ w.T #(N,D)
+    dw=x_train.T @ dout # (D,M)
+    db=np.sum(dout,axis=0)
+    dx= dx.reshape(x.shape)
     ###########################################################################
     # TODO: Implement the affine backward pass.                               #
     ###########################################################################
@@ -74,14 +73,7 @@ def relu_forward(x):
     - out: Output, of the same shape as x
     - cache: x
     """
-    out = None
-    ###########################################################################
-    # TODO: Implement the ReLU forward pass.                                  #
-    ###########################################################################
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    out = np.maximum(x,0)
     cache = x
     return out, cache
 
@@ -97,7 +89,9 @@ def relu_backward(dout, cache):
     Returns:
     - dx: Gradient with respect to x
     """
-    dx, x = None, cache
+    x = cache
+    dx = dout * (x > 0)
+    return dx
     ###########################################################################
     # TODO: Implement the ReLU backward pass.                                 #
     ###########################################################################
@@ -709,13 +703,14 @@ def softmax_loss(x, y):
     - loss: Scalar giving the loss
     - dx: Gradient of the loss with respect to x
     """
-    loss, dx = None, None
-
-    ###########################################################################
-    # TODO: Copy over your solution from A1.
-    ###########################################################################
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    num_train=x.shape[0]
+    score=x.copy() #numtrain,numclass
+    score -= np.max(score, axis=1, keepdims=True)
+    prob=-np.log(np.exp(score)/np.sum(np.exp(score),axis=1,keepdims=True))
+    loss=np.sum(prob[np.arange(num_train),y])
+    loss=loss/num_train
+    
+    dx=np.exp(score)/np.sum(np.exp(score),axis=1,keepdims=True)
+    dx[np.arange(num_train),y]-=1
+    dx/=num_train
     return loss, dx

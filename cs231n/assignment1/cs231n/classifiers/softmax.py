@@ -67,26 +67,11 @@ def softmax_loss_vectorized(W, X, y, reg):
     prob=-np.log(np.exp(score)/np.sum(np.exp(score),axis=1,keepdims=True))
     loss=np.sum(prob[np.arange(num_train),y])
     loss=loss/num_train+ reg *np.sum(W*W)
-    #############################################################################
-    # TODO:                                                                     #
-    # Implement a vectorized version of the softmax loss, storing the           #
-    # result in loss.                                                           #
-    #############################################################################
-     #X.shape() numtrain,vectorlength
     
     dprob_score=np.exp(score)/np.sum(np.exp(score),axis=1,keepdims=True)
     dprob_score[np.arange(num_train),y]-=1
     dW=X.T @ dprob_score
     dW=dW/num_train+2 *reg * W 
-    #############################################################################
-    # TODO:                                                                     #
-    # Implement a vectorized version of the gradient for the softmax            #
-    # loss, storing the result in dW.                                           #
-    #                                                                           #
-    # Hint: Instead of computing the gradient from scratch, it may be easier    #
-    # to reuse some of the intermediate values that you used to compute the     #
-    # loss.                                                                     #
-    #############################################################################
 
 
     return loss, dW

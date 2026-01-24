@@ -175,23 +175,16 @@ class FullyConnectedNet(object):
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
         self.params = {}
+        dims = [input_dim] + hidden_dims + [num_classes]
 
-        ############################################################################
-        # TODO: Initialize the parameters of the network, storing all values in    #
-        # the self.params dictionary. Store weights and biases for the first layer #
-        # in W1 and b1; for the second layer use W2 and b2, etc. Weights should be #
-        # initialized from a normal distribution centered at 0 with standard       #
-        # deviation equal to weight_scale. Biases should be initialized to zero.   #
-        #                                                                          #
-        # When using batch normalization, store scale and shift parameters for the #
-        # first layer in gamma1 and beta1; for the second layer use gamma2 and     #
-        # beta2, etc. Scale parameters should be initialized to ones and shift     #
-        # parameters should be initialized to zeros.                               #
-        ############################################################################
+        for i in range(1, self.num_layers + 1):
+            self.params[f'W{i}'] = weight_scale * np.random.randn(dims[i-1], dims[i])
+            self.params[f'b{i}'] = np.zeros(dims[i])
 
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
+    # normalization params for hidden layers only (1..num_layers-1)
+            if self.normalization in ["batchnorm", "layernorm"] and i < self.num_layers:
+                self.params[f'gamma{i}'] = np.ones(dims[i])
+                self.params[f'beta{i}'] = np.zeros(dims[i])
 
         # When using dropout we need to pass a dropout_param dictionary to each
         # dropout layer so that the layer knows the dropout probability and the mode
@@ -245,7 +238,20 @@ class FullyConnectedNet(object):
         if self.normalization == "batchnorm":
             for bn_param in self.bn_params:
                 bn_param["mode"] = mode
-        scores = None
+        out = X
+        fc_cache = {}
+        relu_cache = {}
+        dropout_cache={}
+        for i in range(1, self.num_layers ):
+            out, fc_cache[i] = affine_forward(out, self.params[f'W{i}'], self.params[f'b{i}'])
+            out, relu_cache[i] = relu_forward(out)
+            if self.use_dropout:
+                out, dropout_cache[i] = dropout_forward(out, self.dropout_param)
+
+
+        scores, fc_cache[self.num_layers] = affine_forward(
+        out, self.params[f'W{self.num_layers}'], self.params[f'b{self.num_layers}']
+    )
         ############################################################################
         # TODO: Implement the forward pass for the fully connected net, computing  #
         # the class scores for X and storing them in the scores variable.          #

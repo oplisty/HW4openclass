@@ -76,16 +76,7 @@ class TwoLayerNet(object):
         layer2_out,layer2_cache=affine_forward(layer1_out,self.params['W2'],self.params['b2'])
 
         scores = layer2_out
-        ############################################################################
-        # TODO: Implement the forward pass for the two-layer net, computing the    #
-        # class scores for X and storing them in the scores variable.              #
-        ############################################################################
-
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
-
-        # If y is None then we are in test mode so just return scores
+        
         if y is None:
             return scores
 
@@ -242,55 +233,59 @@ class FullyConnectedNet(object):
         fc_cache = {}
         relu_cache = {}
         dropout_cache={}
+        batchnorm_cache={}
+        layernorm_cache={}
         for i in range(1, self.num_layers ):
             out, fc_cache[i] = affine_forward(out, self.params[f'W{i}'], self.params[f'b{i}'])
+            
+            if self.normalization == "batchnorm":
+                out,batchnorm_cache[i]=batchnorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],bn_param=self.bn_params[i])
+            if self.normalization == "layernorm":
+                out,layernorm_cache[i]=layernorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],ln_param=self.bn_params[i])
             out, relu_cache[i] = relu_forward(out)
             if self.use_dropout:
                 out, dropout_cache[i] = dropout_forward(out, self.dropout_param)
-
-
         scores, fc_cache[self.num_layers] = affine_forward(
         out, self.params[f'W{self.num_layers}'], self.params[f'b{self.num_layers}']
     )
-        ############################################################################
-        # TODO: Implement the forward pass for the fully connected net, computing  #
-        # the class scores for X and storing them in the scores variable.          #
-        #                                                                          #
-        # When using dropout, you'll need to pass self.dropout_param to each       #
-        # dropout forward pass.                                                    #
-        #                                                                          #
-        # When using batch normalization, you'll need to pass self.bn_params[0] to #
-        # the forward pass for the first batch normalization layer, pass           #
-        # self.bn_params[1] to the forward pass for the second batch normalization #
-        # layer, etc.                                                              #
-        ############################################################################
-
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
-
         # If test mode return early.
         if mode == "test":
             return scores
+        loss, dscores = softmax_loss(scores, y)
+        # L2 regularization with 0.5 factor
+        for i in range(1, self.num_layers + 1):
+            W = self.params[f"W{i}"]
+            loss += 0.5 * self.reg * np.sum(W * W)
 
-        loss, grads = 0.0, {}
-        ############################################################################
-        # TODO: Implement the backward pass for the fully connected net. Store the #
-        # loss in the loss variable and gradients in the grads dictionary. Compute #
-        # data loss using softmax, and make sure that grads[k] holds the gradients #
-        # for self.params[k]. Don't forget to add L2 regularization!               #
-        #                                                                          #
-        # When using batch/layer normalization, you don't need to regularize the   #
-        # scale and shift parameters.                                              #
-        #                                                                          #
-        # NOTE: To ensure that your implementation matches ours and you pass the   #
-        # automated tests, make sure that your L2 regularization includes a factor #
-        # of 0.5 to simplify the expression for the gradient.                      #
-        ############################################################################
+        grads = {}
 
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
+    # last layer backprop
+        dout, dW, db = affine_backward(dscores, fc_cache[self.num_layers])
+        grads[f"W{self.num_layers}"] = dW + self.reg * self.params[f"W{self.num_layers}"]
+        grads[f"b{self.num_layers}"] = db
+
+        for i in reversed(range(1, self.num_layers)):
+        # dropout backward
+            if self.use_dropout:
+                dout = dropout_backward(dout, dropout_cache[i])
+
+        # relu backward
+            dout = relu_backward(dout, relu_cache[i])
+
+        # norm backward
+            if self.normalization == "batchnorm":
+                dout, dgamma, dbeta = batchnorm_backward(dout, batchnorm_cache[i])
+                grads[f"gamma{i}"] = dgamma
+                grads[f"beta{i}"] = dbeta
+            elif self.normalization == "layernorm":
+                dout, dgamma, dbeta = layernorm_backward(dout, layernorm_cache[i])
+                grads[f"gamma{i}"] = dgamma
+                grads[f"beta{i}"] = dbeta
+
+        # affine backward
+            dout, dW, db = affine_backward(dout, fc_cache[i])
+            grads[f"W{i}"] = dW + self.reg * self.params[f"W{i}"]
+            grads[f"b{i}"] = db
 
         return loss, grads
 

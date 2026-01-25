@@ -244,20 +244,18 @@ def layernorm_forward(x, gamma, beta, ln_param):
     """
     out, cache = None, None
     eps = ln_param.get("eps", 1e-5)
-    ###########################################################################
-    # TODO: Implement the training-time forward pass for layer norm.          #
-    # Normalize the incoming data, and scale and  shift the normalized data   #
-    #  using gamma and beta.                                                  #
-    # HINT: this can be done by slightly modifying your training-time         #
-    # implementation of  batch normalization, and inserting a line or two of  #
-    # well-placed code. In particular, can you think of any matrix            #
-    # transformations you could perform, that would enable you to copy over   #
-    # the batch norm code and leave it almost unchanged?                      #
-    ###########################################################################
 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    # per data-point mean/var across features
+    mu = np.mean(x, axis=1, keepdims=True)                 # (N,1)
+    var = np.var(x, axis=1, keepdims=True)                 # (N,1)
+    std = np.sqrt(var + eps)                               # (N,1)
+    inv_std = 1.0 / std                                    # (N,1)
+
+    x_centered = x - mu                                    # (N,D)
+    x_hat = x_centered * inv_std                           # (N,D)
+
+    out = gamma * x_hat + beta    
+    cache = (x_hat, gamma, x_centered, inv_std, std, var, eps)
     return out, cache
 
 
@@ -277,18 +275,16 @@ def layernorm_backward(dout, cache):
     - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
     - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
     """
-    dx, dgamma, dbeta = None, None, None
-    ###########################################################################
-    # TODO: Implement the backward pass for layer norm.                       #
-    #                                                                         #
-    # HINT: this can be done by slightly modifying your training-time         #
-    # implementation of batch normalization. The hints to the forward pass    #
-    # still apply!                                                            #
-    ###########################################################################
+    x_hat, gamma, x_centered, inv_std, std, var, eps=cache
+    N, D = dout.shape
 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    dbeta = np.sum(dout, axis=0)                 # (D,)
+    dgamma = np.sum(dout * x_hat, axis=0)        # (D,)
+
+    dxhat = dout * gamma                         # (N,D)
+    sum_dxhat = np.sum(dxhat, axis=1, keepdims=True)                 # (N,1)
+    sum_dxhat_xhat = np.sum(dxhat * x_hat, axis=1, keepdims=True)    # (N,1)
+    dx = (1.0 / D) * inv_std * (D * dxhat - sum_dxhat - x_hat * sum_dxhat_xhat)
     return dx, dgamma, dbeta
 
 

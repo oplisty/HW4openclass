@@ -179,7 +179,7 @@ def batchnorm_backward(dout, cache):
     x_hat, gamma, x_centered, inv_std, std, sample_var, eps=cache
     N, D = dout.shape
     dbeta=np.sum(dout,axis=0)
-    dgamma=dout.T @ x_hat
+    dgamma=np.sum(dout * x_hat, axis=0)
     dxhat = dout * gamma      
     dx = (1.0 / N) * inv_std * (
         N * dxhat
@@ -346,13 +346,7 @@ def dropout_backward(dout, cache):
 
     dx = None
     if mode == "train":
-        #######################################################################
-        # TODO: Implement training phase backward pass for inverted dropout   #
-        #######################################################################
-        pass
-        #######################################################################
-        #                          END OF YOUR CODE                           #
-        #######################################################################
+        dx=dout * mask
     elif mode == "test":
         dx = dout
     return dx

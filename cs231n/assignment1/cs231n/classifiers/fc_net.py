@@ -76,7 +76,7 @@ class TwoLayerNet(object):
         layer2_out,layer2_cache=affine_forward(layer1_out,self.params['W2'],self.params['b2'])
 
         scores = layer2_out
-        
+
         if y is None:
             return scores
 
@@ -135,7 +135,7 @@ class FullyConnectedNet(object):
         input_dim=3 * 32 * 32,
         num_classes=10,
         dropout_keep_ratio=1,
-        normalization=None,
+        normalization="batchnorm",
         reg=0.0,
         weight_scale=1e-2,
         dtype=np.float32,
@@ -239,9 +239,9 @@ class FullyConnectedNet(object):
             out, fc_cache[i] = affine_forward(out, self.params[f'W{i}'], self.params[f'b{i}'])
             
             if self.normalization == "batchnorm":
-                out,batchnorm_cache[i]=batchnorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],bn_param=self.bn_params[i])
+                out,batchnorm_cache[i]=batchnorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],bn_param=self.bn_params[i-1])
             if self.normalization == "layernorm":
-                out,layernorm_cache[i]=layernorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],ln_param=self.bn_params[i])
+                out,layernorm_cache[i]=layernorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],ln_param=self.bn_params[i-1])
             out, relu_cache[i] = relu_forward(out)
             if self.use_dropout:
                 out, dropout_cache[i] = dropout_forward(out, self.dropout_param)

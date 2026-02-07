@@ -1,9 +1,12 @@
 from builtins import range
 import numpy as np
 
+# import numexpr as ne # ~~DELETE LINE~~
+
 
 def affine_forward(x, w, b):
-    """Computes the forward pass for an affine (fully connected) layer.
+    """
+    Computes the forward pass for an affine (fully-connected) layer.
 
     The input x has shape (N, d_1, ..., d_k) and contains a minibatch of N
     examples, where each example x[i] has shape (d_1, ..., d_k). We will
@@ -19,20 +22,16 @@ def affine_forward(x, w, b):
     - out: output, of shape (N, M)
     - cache: (x, w, b)
     """
-    out = None
-    ###########################################################################
-    # TODO: Copy over your solution from Assignment 1.                        #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    N=x.shape[0]
+    train_x=x.reshape(N,-1)
+    out = train_x @ w +b 
     cache = (x, w, b)
     return out, cache
 
 
 def affine_backward(dout, cache):
-    """Computes the backward pass for an affine (fully connected) layer.
+    """
+    Computes the backward pass for an affine layer.
 
     Inputs:
     - dout: Upstream derivative, of shape (N, M)
@@ -47,19 +46,18 @@ def affine_backward(dout, cache):
     - db: Gradient with respect to b, of shape (M,)
     """
     x, w, b = cache
-    dx, dw, db = None, None, None
-    ###########################################################################
-    # TODO: Copy over your solution from Assignment 1.                        #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    N=x.shape[0]
+    x_train=x.reshape(N,-1)
+    dx=dout @ w.T #(N,D)
+    dw=x_train.T @ dout # (D,M)
+    db=np.sum(dout,axis=0)
+    dx= dx.reshape(x.shape)
     return dx, dw, db
 
 
 def relu_forward(x):
-    """Computes the forward pass for a layer of rectified linear units (ReLUs).
+    """
+    Computes the forward pass for a layer of rectified linear units (ReLUs).
 
     Input:
     - x: Inputs, of any shape
@@ -68,20 +66,14 @@ def relu_forward(x):
     - out: Output, of the same shape as x
     - cache: x
     """
-    out = None
-    ###########################################################################
-    # TODO: Copy over your solution from Assignment 1.                        #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    out = np.maximum(x,0)
     cache = x
     return out, cache
 
 
 def relu_backward(dout, cache):
-    """Computes the backward pass for a layer of rectified linear units (ReLUs).
+    """
+    Computes the backward pass for a layer of rectified linear units (ReLUs).
 
     Input:
     - dout: Upstream derivatives, of any shape
@@ -90,44 +82,14 @@ def relu_backward(dout, cache):
     Returns:
     - dx: Gradient with respect to x
     """
-    dx, x = None, cache
-    ###########################################################################
-    # TODO: Copy over your solution from Assignment 1.                        #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    x = cache
+    dx = dout * (x > 0)
     return dx
 
 
-def softmax_loss(x, y):
-    """Computes the loss and gradient for softmax classification.
-
-    Inputs:
-    - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
-      class for the ith input.
-    - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
-      0 <= y[i] < C
-
-    Returns a tuple of:
-    - loss: Scalar giving the loss
-    - dx: Gradient of the loss with respect to x
-    """
-    loss, dx = None, None
-
-    ###########################################################################
-    # TODO: Copy over your solution from Assignment 1.                        #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-    return loss, dx
-
-
 def batchnorm_forward(x, gamma, beta, bn_param):
-    """Forward pass for batch normalization.
+    """
+    Forward pass for batch normalization.
 
     During training the sample mean and (uncorrected) sample variance are
     computed from minibatch statistics and used to normalize the incoming data.
@@ -173,42 +135,20 @@ def batchnorm_forward(x, gamma, beta, bn_param):
 
     out, cache = None, None
     if mode == "train":
-        #######################################################################
-        # TODO: Implement the training-time forward pass for batch norm.      #
-        # Use minibatch statistics to compute the mean and variance, use      #
-        # these statistics to normalize the incoming data, and scale and      #
-        # shift the normalized data using gamma and beta.                     #
-        #                                                                     #
-        # You should store the output in the variable out. Any intermediates  #
-        # that you need for the backward pass should be stored in the cache   #
-        # variable.                                                           #
-        #                                                                     #
-        # You should also use your computed sample mean and variance together #
-        # with the momentum variable to update the running mean and running   #
-        # variance, storing your result in the running_mean and running_var   #
-        # variables.                                                          #
-        #                                                                     #
-        # Note that though you should be keeping track of the running         #
-        # variance, you should normalize the data based on the standard       #
-        # deviation (square root of variance) instead!                        #
-        # Referencing the original paper (https://arxiv.org/abs/1502.03167)   #
-        # might prove to be helpful.                                          #
-        #######################################################################
-        pass
-        #######################################################################
-        #                           END OF YOUR CODE                          #
-        #######################################################################
+        sample_mean = np.mean(x, axis=0)          
+        sample_var  = np.var(x, axis=0)
+        x_centered = x - sample_mean                     # (N,D)
+        std = np.sqrt(sample_var + eps)                  # (D,)
+        inv_std = 1.0 / std                              # (D,)
+        x_hat = x_centered * inv_std   #(N,) 
+        out = gamma * x_hat + beta     
+        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+        running_var  = momentum * running_var  + (1 - momentum) * sample_var
+        cache = (x_hat, gamma, x_centered, inv_std, std, sample_var, eps)
     elif mode == "test":
-        #######################################################################
-        # TODO: Implement the test-time forward pass for batch normalization. #
-        # Use the running mean and variance to normalize the incoming data,   #
-        # then scale and shift the normalized data using gamma and beta.      #
-        # Store the result in the out variable.                               #
-        #######################################################################
-        pass
-        #######################################################################
-        #                          END OF YOUR CODE                           #
-        #######################################################################
+        x_hat = (x - running_mean) / np.sqrt(running_var + eps)
+        out = gamma * x_hat + beta
+        cache = None
     else:
         raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
 
@@ -220,7 +160,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
 
 
 def batchnorm_backward(dout, cache):
-    """Backward pass for batch normalization.
+    """
+    Backward pass for batch normalization.
 
     For this implementation, you should write out a computation graph for
     batch normalization on paper and propagate gradients backward through
@@ -235,23 +176,22 @@ def batchnorm_backward(dout, cache):
     - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
     - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
     """
-    dx, dgamma, dbeta = None, None, None
-    ###########################################################################
-    # TODO: Implement the backward pass for batch normalization. Store the    #
-    # results in the dx, dgamma, and dbeta variables.                         #
-    # Referencing the original paper (https://arxiv.org/abs/1502.03167)       #
-    # might prove to be helpful.                                              #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-
+    x_hat, gamma, x_centered, inv_std, std, sample_var, eps=cache
+    N, D = dout.shape
+    dbeta=np.sum(dout,axis=0)
+    dgamma=np.sum(dout * x_hat, axis=0)
+    dxhat = dout * gamma      
+    dx = (1.0 / N) * inv_std * (
+        N * dxhat
+        - np.sum(dxhat, axis=0)
+        - x_hat * np.sum(dxhat * x_hat, axis=0)
+    )
     return dx, dgamma, dbeta
 
 
 def batchnorm_backward_alt(dout, cache):
-    """Alternative backward pass for batch normalization.
+    """
+    Alternative backward pass for batch normalization.
 
     For this implementation you should work out the derivatives for the batch
     normalizaton backward pass on paper and simplify as much as possible. You
@@ -272,7 +212,7 @@ def batchnorm_backward_alt(dout, cache):
     # should be able to compute gradients with respect to the inputs in a     #
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -281,7 +221,8 @@ def batchnorm_backward_alt(dout, cache):
 
 
 def layernorm_forward(x, gamma, beta, ln_param):
-    """Forward pass for layer normalization.
+    """
+    Forward pass for layer normalization.
 
     During both training and test-time, the incoming data is normalized per data-point,
     before being scaled by gamma and beta parameters identical to that of batch normalization.
@@ -303,25 +244,24 @@ def layernorm_forward(x, gamma, beta, ln_param):
     """
     out, cache = None, None
     eps = ln_param.get("eps", 1e-5)
-    ###########################################################################
-    # TODO: Implement the training-time forward pass for layer norm.          #
-    # Normalize the incoming data, and scale and  shift the normalized data   #
-    #  using gamma and beta.                                                  #
-    # HINT: this can be done by slightly modifying your training-time         #
-    # implementation of  batch normalization, and inserting a line or two of  #
-    # well-placed code. In particular, can you think of any matrix            #
-    # transformations you could perform, that would enable you to copy over   #
-    # the batch norm code and leave it almost unchanged?                      #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+
+    # per data-point mean/var across features
+    mu = np.mean(x, axis=1, keepdims=True)                 # (N,1)
+    var = np.var(x, axis=1, keepdims=True)                 # (N,1)
+    std = np.sqrt(var + eps)                               # (N,1)
+    inv_std = 1.0 / std                                    # (N,1)
+
+    x_centered = x - mu                                    # (N,D)
+    x_hat = x_centered * inv_std                           # (N,D)
+
+    out = gamma * x_hat + beta    
+    cache = (x_hat, gamma, x_centered, inv_std, std, var, eps)
     return out, cache
 
 
 def layernorm_backward(dout, cache):
-    """Backward pass for layer normalization.
+    """
+    Backward pass for layer normalization.
 
     For this implementation, you can heavily rely on the work you've done already
     for batch normalization.
@@ -335,28 +275,22 @@ def layernorm_backward(dout, cache):
     - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
     - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
     """
-    dx, dgamma, dbeta = None, None, None
-    ###########################################################################
-    # TODO: Implement the backward pass for layer norm.                       #
-    #                                                                         #
-    # HINT: this can be done by slightly modifying your training-time         #
-    # implementation of batch normalization. The hints to the forward pass    #
-    # still apply!                                                            #
-    ###########################################################################
-    # 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    x_hat, gamma, x_centered, inv_std, std, var, eps=cache
+    N, D = dout.shape
+
+    dbeta = np.sum(dout, axis=0)                 # (D,)
+    dgamma = np.sum(dout * x_hat, axis=0)        # (D,)
+
+    dxhat = dout * gamma                         # (N,D)
+    sum_dxhat = np.sum(dxhat, axis=1, keepdims=True)                 # (N,1)
+    sum_dxhat_xhat = np.sum(dxhat * x_hat, axis=1, keepdims=True)    # (N,1)
+    dx = (1.0 / D) * inv_std * (D * dxhat - sum_dxhat - x_hat * sum_dxhat_xhat)
     return dx, dgamma, dbeta
 
 
 def dropout_forward(x, dropout_param):
-    """Forward pass for inverted dropout.
-
-    Note that this is different from the vanilla version of dropout.
-    Here, p is the probability of keeping a neuron output, as opposed to
-    the probability of dropping a neuron output.
-    See http://cs231n.github.io/neural-networks-2/#reg for more details.
+    """
+    Performs the forward pass for (inverted) dropout.
 
     Inputs:
     - x: Input data, of any shape
@@ -372,6 +306,13 @@ def dropout_forward(x, dropout_param):
     - out: Array of the same shape as x.
     - cache: tuple (dropout_param, mask). In training mode, mask is the dropout
       mask that was used to multiply the input; in test mode, mask is None.
+
+    NOTE: Please implement **inverted** dropout, not the vanilla version of dropout.
+    See http://cs231n.github.io/neural-networks-2/#reg for more details.
+
+    NOTE 2: Keep in mind that p is the probability of **keep** a neuron
+    output; this might be contrary to some sources, where it is referred to
+    as the probability of dropping a neuron output.
     """
     p, mode = dropout_param["p"], dropout_param["mode"]
     if "seed" in dropout_param:
@@ -381,22 +322,10 @@ def dropout_forward(x, dropout_param):
     out = None
 
     if mode == "train":
-        #######################################################################
-        # TODO: Implement training phase forward pass for inverted dropout.   #
-        # Store the dropout mask in the mask variable.                        #
-        #######################################################################
-        pass
-        #######################################################################
-        #                           END OF YOUR CODE                          #
-        #######################################################################
+        mask = (np.random.rand(*x.shape) < p) / p   
+        out = x * mask
     elif mode == "test":
-        #######################################################################
-        # TODO: Implement the test phase forward pass for inverted dropout.   #
-        #######################################################################
-        pass
-        #######################################################################
-        #                            END OF YOUR CODE                         #
-        #######################################################################
+        out=x
 
     cache = (dropout_param, mask)
     out = out.astype(x.dtype, copy=False)
@@ -405,7 +334,8 @@ def dropout_forward(x, dropout_param):
 
 
 def dropout_backward(dout, cache):
-    """Backward pass for inverted dropout.
+    """
+    Perform the backward pass for (inverted) dropout.
 
     Inputs:
     - dout: Upstream derivatives, of any shape
@@ -416,20 +346,15 @@ def dropout_backward(dout, cache):
 
     dx = None
     if mode == "train":
-        #######################################################################
-        # TODO: Implement training phase backward pass for inverted dropout   #
-        #######################################################################
-        pass
-        #######################################################################
-        #                          END OF YOUR CODE                           #
-        #######################################################################
+        dx=dout * mask
     elif mode == "test":
         dx = dout
     return dx
 
 
 def conv_forward_naive(x, w, b, conv_param):
-    """A naive implementation of the forward pass for a convolutional layer.
+    """
+    A naive implementation of the forward pass for a convolutional layer.
 
     The input consists of N data points, each with C channels, height H and
     width W. We convolve each input with F different filters, where each filter
@@ -443,6 +368,7 @@ def conv_forward_naive(x, w, b, conv_param):
       - 'stride': The number of pixels between adjacent receptive fields in the
         horizontal and vertical directions.
       - 'pad': The number of pixels that will be used to zero-pad the input.
+
 
     During padding, 'pad' zeros should be placed symmetrically (i.e equally on both sides)
     along the height and width axes of the input. Be careful not to modfiy the original
@@ -459,7 +385,7 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -468,7 +394,8 @@ def conv_forward_naive(x, w, b, conv_param):
 
 
 def conv_backward_naive(dout, cache):
-    """A naive implementation of the backward pass for a convolutional layer.
+    """
+    A naive implementation of the backward pass for a convolutional layer.
 
     Inputs:
     - dout: Upstream derivatives.
@@ -483,7 +410,7 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -491,7 +418,8 @@ def conv_backward_naive(dout, cache):
 
 
 def max_pool_forward_naive(x, pool_param):
-    """A naive implementation of the forward pass for a max-pooling layer.
+    """
+    A naive implementation of the forward pass for a max-pooling layer.
 
     Inputs:
     - x: Input data, of shape (N, C, H, W)
@@ -514,7 +442,7 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # TODO: Implement the max-pooling forward pass                            #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -523,7 +451,8 @@ def max_pool_forward_naive(x, pool_param):
 
 
 def max_pool_backward_naive(dout, cache):
-    """A naive implementation of the backward pass for a max-pooling layer.
+    """
+    A naive implementation of the backward pass for a max-pooling layer.
 
     Inputs:
     - dout: Upstream derivatives
@@ -536,7 +465,7 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the max-pooling backward pass                           #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -544,7 +473,8 @@ def max_pool_backward_naive(dout, cache):
 
 
 def spatial_batchnorm_forward(x, gamma, beta, bn_param):
-    """Computes the forward pass for spatial batch normalization.
+    """
+    Computes the forward pass for spatial batch normalization.
 
     Inputs:
     - x: Input data of shape (N, C, H, W)
@@ -573,7 +503,7 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # vanilla version of batch normalization you implemented above.           #
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -582,7 +512,8 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
 
 
 def spatial_batchnorm_backward(dout, cache):
-    """Computes the backward pass for spatial batch normalization.
+    """
+    Computes the backward pass for spatial batch normalization.
 
     Inputs:
     - dout: Upstream derivatives, of shape (N, C, H, W)
@@ -602,7 +533,7 @@ def spatial_batchnorm_backward(dout, cache):
     # vanilla version of batch normalization you implemented above.           #
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -611,12 +542,11 @@ def spatial_batchnorm_backward(dout, cache):
 
 
 def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
-    """Computes the forward pass for spatial group normalization.
-    
-    In contrast to layer normalization, group normalization splits each entry in the data into G
-    contiguous pieces, which it then normalizes independently. Per-feature shifting and scaling
-    are then applied to the data, in a manner identical to that of batch normalization and layer
-    normalization.
+    """
+    Computes the forward pass for spatial group normalization.
+    In contrast to layer normalization, group normalization splits each entry
+    in the data into G contiguous pieces, which it then normalizes independently.
+    Per feature shifting and scaling are then applied to the data, in a manner identical to that of batch normalization and layer normalization.
 
     Inputs:
     - x: Input data of shape (N, C, H, W)
@@ -639,7 +569,7 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     # the bulk of the code is similar to both train-time batch normalization  #
     # and layer normalization!                                                #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -647,7 +577,8 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
 
 
 def spatial_groupnorm_backward(dout, cache):
-    """Computes the backward pass for spatial group normalization.
+    """
+    Computes the backward pass for spatial group normalization.
 
     Inputs:
     - dout: Upstream derivatives, of shape (N, C, H, W)
@@ -664,8 +595,70 @@ def spatial_groupnorm_backward(dout, cache):
     # TODO: Implement the backward pass for spatial group normalization.      #
     # This will be extremely similar to the layer norm implementation.        #
     ###########################################################################
-    # 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     return dx, dgamma, dbeta
+
+
+def svm_loss(x, y):
+    """
+    Computes the loss and gradient using for multiclass SVM classification.
+
+    Inputs:
+    - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
+      class for the ith input.
+    - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
+      0 <= y[i] < C
+
+    Returns a tuple of:
+    - loss: Scalar giving the loss
+    - dx: Gradient of the loss with respect to x
+    """
+    loss, dx = None, None
+    N = x.shape[0]
+
+    # Correct class scores: shape (N, 1)
+    correct_scores = x[np.arange(N), y].reshape(N, 1)
+
+    # Margins: max(0, s_j - s_y + 1)
+    margins = np.maximum(0, x - correct_scores + 1.0)
+    margins[np.arange(N), y] = 0.0
+
+    loss = np.sum(margins) / N
+
+    # Gradient
+    dx = np.zeros_like(x)
+    mask = (margins > 0).astype(x.dtype)      # (N, C) indicator
+    row_sum = np.sum(mask, axis=1)            # (N,)
+    mask[np.arange(N), y] = -row_sum          # correct class accumulates negatives
+    dx = mask / N
+    return loss, dx
+
+
+def softmax_loss(x, y):
+    """
+    Computes the loss and gradient for softmax classification.
+
+    Inputs:
+    - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
+      class for the ith input.
+    - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
+      0 <= y[i] < C
+
+    Returns a tuple of:
+    - loss: Scalar giving the loss
+    - dx: Gradient of the loss with respect to x
+    """
+    num_train=x.shape[0]
+    score=x.copy() #numtrain,numclass
+    score -= np.max(score, axis=1, keepdims=True)
+    prob=-np.log(np.exp(score)/np.sum(np.exp(score),axis=1,keepdims=True))
+    loss=np.sum(prob[np.arange(num_train),y])
+    loss=loss/num_train
+    
+    dx=np.exp(score)/np.sum(np.exp(score),axis=1,keepdims=True)
+    dx[np.arange(num_train),y]-=1
+    dx/=num_train
+    return loss, dx

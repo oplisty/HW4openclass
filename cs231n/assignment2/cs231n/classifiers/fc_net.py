@@ -1,9 +1,116 @@
 from builtins import range
 from builtins import object
+import os
 import numpy as np
 
 from ..layers import *
 from ..layer_utils import *
+
+
+class TwoLayerNet(object):
+    """
+    A two-layer fully-connected neural network with ReLU nonlinearity and
+    softmax loss that uses a modular layer design. We assume an input dimension
+    of D, a hidden dimension of H, and perform classification over C classes.
+
+    The architecure should be affine - relu - affine - softmax.
+
+    Note that this class does not implement gradient descent; instead, it
+    will interact with a separate Solver object that is responsible for running
+    optimization.
+
+    The learnable parameters of the model are stored in the dictionary
+    self.params that maps parameter names to numpy arrays.
+    """
+
+    def __init__(
+        self,
+        input_dim=3 * 32 * 32,
+        hidden_dim=100,
+        num_classes=10,
+        weight_scale=1e-3,
+        reg=0.0,
+    ):
+        """
+        Initialize a new network.
+
+        Inputs:
+        - input_dim: An integer giving the size of the input
+        - hidden_dim: An integer giving the size of the hidden layer
+        - num_classes: An integer giving the number of classes to classify
+        - weight_scale: Scalar giving the standard deviation for random
+          initialization of the weights.
+        - reg: Scalar giving L2 regularization strength.
+        """
+        self.params = {}
+        self.reg = reg
+        self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dim)
+        self.params['b1'] = np.zeros(hidden_dim)
+
+        self.params['W2'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params['b2'] = np.zeros(num_classes)
+        
+
+    def loss(self, X, y=None):
+        """
+        Compute loss and gradient for a minibatch of data.
+
+        Inputs:
+        - X: Array of input data of shape (N, d_1, ..., d_k)
+        - y: Array of labels, of shape (N,). y[i] gives the label for X[i].
+
+        Returns:
+        If y is None, then run a test-time forward pass of the model and return:
+        - scores: Array of shape (N, C) giving classification scores, where
+          scores[i, c] is the classification score for X[i] and class c.
+
+        If y is not None, then run a training-time forward and backward pass and
+        return a tuple of:
+        - loss: Scalar value giving the loss
+        - grads: Dictionary with the same keys as self.params, mapping parameter
+          names to gradients of the loss with respect to those parameters.
+        """
+        layer1_out,layer1_cache= affine_forward(X,self.params['W1'],self.params['b1'])
+    
+        layer1_out,relu_cache=relu_forward(layer1_out)
+        layer2_out,layer2_cache=affine_forward(layer1_out,self.params['W2'],self.params['b2'])
+
+        scores = layer2_out
+
+        if y is None:
+            return scores
+
+        loss, grads = 0, {}
+        loss,dx=softmax_loss(scores,y)
+        dx,grads['W2'],grads['b2']=affine_backward(dx,cache=layer2_cache)
+        dx=relu_backward(dx,cache=relu_cache)
+        dx,grads['W1'],grads['b1']=affine_backward(dx,cache=layer1_cache)
+        W1, W2 = self.params['W1'], self.params['W2']
+        loss += 0.5 * self.reg * (np.sum(W1*W1) + np.sum(W2*W2))
+        grads['W1'] += self.reg * W1
+        grads['W2'] += self.reg * W2
+
+        return loss, grads
+
+    def save(self, fname):
+      """Save model parameters."""
+      fpath = os.path.join(os.path.dirname(__file__), "../saved/", fname)
+      params = self.params
+      np.save(fpath, params)
+      print(fname, "saved.")
+    
+    def load(self, fname):
+      """Load model parameters."""
+      fpath = os.path.join(os.path.dirname(__file__), "../saved/", fname)
+      if not os.path.exists(fpath):
+        print(fname, "not available.")
+        return False
+      else:
+        params = np.load(fpath, allow_pickle=True).item()
+        self.params = params
+        print(fname, "loaded.")
+        return True
+
 
 
 class FullyConnectedNet(object):
@@ -28,7 +135,7 @@ class FullyConnectedNet(object):
         input_dim=3 * 32 * 32,
         num_classes=10,
         dropout_keep_ratio=1,
-        normalization=None,
+        normalization="batchnorm",
         reg=0.0,
         weight_scale=1e-2,
         dtype=np.float32,
@@ -59,23 +166,16 @@ class FullyConnectedNet(object):
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
         self.params = {}
+        dims = [input_dim] + hidden_dims + [num_classes]
 
-        ############################################################################
-        # TODO: Initialize the parameters of the network, storing all values in    #
-        # the self.params dictionary. Store weights and biases for the first layer #
-        # in W1 and b1; for the second layer use W2 and b2, etc. Weights should be #
-        # initialized from a normal distribution centered at 0 with standard       #
-        # deviation equal to weight_scale. Biases should be initialized to zero.   #
-        #                                                                          #
-        # When using batch normalization, store scale and shift parameters for the #
-        # first layer in gamma1 and beta1; for the second layer use gamma2 and     #
-        # beta2, etc. Scale parameters should be initialized to ones and shift     #
-        # parameters should be initialized to zeros.                               #
-        ############################################################################
-        # 
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
+        for i in range(1, self.num_layers + 1):
+            self.params[f'W{i}'] = weight_scale * np.random.randn(dims[i-1], dims[i])
+            self.params[f'b{i}'] = np.zeros(dims[i])
+
+    # normalization params for hidden layers only (1..num_layers-1)
+            if self.normalization in ["batchnorm", "layernorm"] and i < self.num_layers:
+                self.params[f'gamma{i}'] = np.ones(dims[i])
+                self.params[f'beta{i}'] = np.zeros(dims[i])
 
         # When using dropout we need to pass a dropout_param dictionary to each
         # dropout layer so that the layer knows the dropout probability and the mode
@@ -129,45 +229,82 @@ class FullyConnectedNet(object):
         if self.normalization == "batchnorm":
             for bn_param in self.bn_params:
                 bn_param["mode"] = mode
-        scores = None
-        ############################################################################
-        # TODO: Implement the forward pass for the fully connected net, computing  #
-        # the class scores for X and storing them in the scores variable.          #
-        #                                                                          #
-        # When using dropout, you'll need to pass self.dropout_param to each       #
-        # dropout forward pass.                                                    #
-        #                                                                          #
-        # When using batch normalization, you'll need to pass self.bn_params[0] to #
-        # the forward pass for the first batch normalization layer, pass           #
-        # self.bn_params[1] to the forward pass for the second batch normalization #
-        # layer, etc.                                                              #
-        ############################################################################
-        # 
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
-
+        out = X
+        fc_cache = {}
+        relu_cache = {}
+        dropout_cache={}
+        batchnorm_cache={}
+        layernorm_cache={}
+        for i in range(1, self.num_layers ):
+            out, fc_cache[i] = affine_forward(out, self.params[f'W{i}'], self.params[f'b{i}'])
+            
+            if self.normalization == "batchnorm":
+                out,batchnorm_cache[i]=batchnorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],bn_param=self.bn_params[i-1])
+            if self.normalization == "layernorm":
+                out,layernorm_cache[i]=layernorm_forward(out,gamma=self.params[f"gamma{i}"],beta=self.params[f"beta{i}"],ln_param=self.bn_params[i-1])
+            out, relu_cache[i] = relu_forward(out)
+            if self.use_dropout:
+                out, dropout_cache[i] = dropout_forward(out, self.dropout_param)
+        scores, fc_cache[self.num_layers] = affine_forward(
+        out, self.params[f'W{self.num_layers}'], self.params[f'b{self.num_layers}']
+    )
         # If test mode return early.
         if mode == "test":
             return scores
+        loss, dscores = softmax_loss(scores, y)
+        # L2 regularization with 0.5 factor
+        for i in range(1, self.num_layers + 1):
+            W = self.params[f"W{i}"]
+            loss += 0.5 * self.reg * np.sum(W * W)
 
-        loss, grads = 0.0, {}
-        ############################################################################
-        # TODO: Implement the backward pass for the fully connected net. Store the #
-        # loss in the loss variable and gradients in the grads dictionary. Compute #
-        # data loss using softmax, and make sure that grads[k] holds the gradients #
-        # for self.params[k]. Don't forget to add L2 regularization!               #
-        #                                                                          #
-        # When using batch/layer normalization, you don't need to regularize the   #
-        # scale and shift parameters.                                              #
-        #                                                                          #
-        # NOTE: To ensure that your implementation matches ours and you pass the   #
-        # automated tests, make sure that your L2 regularization includes a factor #
-        # of 0.5 to simplify the expression for the gradient.                      #
-        ############################################################################
-        # 
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
+        grads = {}
+
+    # last layer backprop
+        dout, dW, db = affine_backward(dscores, fc_cache[self.num_layers])
+        grads[f"W{self.num_layers}"] = dW + self.reg * self.params[f"W{self.num_layers}"]
+        grads[f"b{self.num_layers}"] = db
+
+        for i in reversed(range(1, self.num_layers)):
+        # dropout backward
+            if self.use_dropout:
+                dout = dropout_backward(dout, dropout_cache[i])
+
+        # relu backward
+            dout = relu_backward(dout, relu_cache[i])
+
+        # norm backward
+            if self.normalization == "batchnorm":
+                dout, dgamma, dbeta = batchnorm_backward(dout, batchnorm_cache[i])
+                grads[f"gamma{i}"] = dgamma
+                grads[f"beta{i}"] = dbeta
+            elif self.normalization == "layernorm":
+                dout, dgamma, dbeta = layernorm_backward(dout, layernorm_cache[i])
+                grads[f"gamma{i}"] = dgamma
+                grads[f"beta{i}"] = dbeta
+
+        # affine backward
+            dout, dW, db = affine_backward(dout, fc_cache[i])
+            grads[f"W{i}"] = dW + self.reg * self.params[f"W{i}"]
+            grads[f"b{i}"] = db
 
         return loss, grads
+
+
+    def save(self, fname):
+      """Save model parameters."""
+      fpath = os.path.join(os.path.dirname(__file__), "../saved/", fname)
+      params = self.params
+      np.save(fpath, params)
+      print(fname, "saved.")
+    
+    def load(self, fname):
+      """Load model parameters."""
+      fpath = os.path.join(os.path.dirname(__file__), "../saved/", fname)
+      if not os.path.exists(fpath):
+        print(fname, "not available.")
+        return False
+      else:
+        params = np.load(fpath, allow_pickle=True).item()
+        self.params = params
+        print(fname, "loaded.")
+        return True
